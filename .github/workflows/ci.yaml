@@ -38,7 +38,7 @@ jobs:
           echo "policy_working_dirs=$policy_working_dirs"
           echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
 
-  continuos-integration:
+  continuous-integration:
     uses: ./.github/workflows/reusable-ci.yaml
     needs: calculate-policy-matrix
     if: ${{ needs.calculate-policy-matrix.outputs.policy_working_dirs != '[]' }}
