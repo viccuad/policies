@@ -1,0 +1,42 @@
+name: Rust Crates CI
+
+on:
+  push:
+    paths:
+      - "policies/crates/**"
+  pull_request:
+    paths:
+      - "policies/crates/**"
+  workflow_dispatch:
+
+jobs:
+  list-crates:
+    runs-on: ubuntu-latest
+    outputs:
+      crate-dirs: ${{ steps.set-crates.outputs.crate-dirs }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: set-crates
+        run: |
+          dirs=$(find policies/crates -name Cargo.toml -exec dirname {} \; | jq -R . | jq -s .)
+          echo "crate-dirs=$dirs" >> $GITHUB_OUTPUT
+
+  rust-crate-ci:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crate-dir: ${{ fromJson(needs.list-crates.outputs.crate-dirs) }}
+    needs: list-crates
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Rust
+        uses: actions/setup-rust@v1
+        with:
+          rust-version: stable
+      - name: Run cargo check
+        run: cargo check --manifest-path ${{ matrix.crate-dir }}/Cargo.toml
+      - name: Run cargo test
+        run: cargo test --manifest-path ${{ matrix.crate-dir }}/Cargo.toml
+      - name: Check formatting
+        run: cargo fmt --manifest-path ${{ matrix.crate-dir }}/Cargo.toml -- --check
