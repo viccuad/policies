@@ -9,6 +9,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 kubewarden-policy-sdk = { workspace = true }
+k8s-openapi = { workspace = true }                  # consume feature from workspace crate
 lazy_static = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
