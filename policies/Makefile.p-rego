@@ -1,6 +1,12 @@
+# Shared build rules for the Rego policies of this repository.
+# A policy uses them with a `Makefile` symlink that points to this file.
+#
 # POLICY_TYPE can be one of `gatekeeper`, `opa`, with different build process
 POLICY_TYPE := $(shell grep '^executionMode:' metadata.yml | awk '{print $$2}')
-SOURCE_FILES := $(shell find . -type f -name '*.rego')
+
+# Rego files of the policy. A policy keeps its unit tests either in
+# `policy_test.rego` or under `tests/`. Both layouts are supported.
+SOURCE_FILES := $(wildcard *.rego) $(wildcard utility/*.rego) $(wildcard tests/*.rego)
 
 policy.wasm: $(SOURCE_FILES)
 ifeq ($(POLICY_TYPE), gatekeeper)
@@ -18,23 +24,29 @@ endif
 
 .PHONY: test
 test:
-	opa test *.rego
-	
+	opa test $(SOURCE_FILES)
+
 .PHONY: lint
 lint:
-	opa check --strict *.rego
+	opa check --strict $(SOURCE_FILES)
 
 annotated-policy.wasm: policy.wasm metadata.yml
 	kwctl annotate -m metadata.yml -u README.md -o annotated-policy.wasm policy.wasm
 
+# A policy without an `e2e.bats` file has no end-to-end test. The target then
+# builds the annotated module and stops.
 .PHONY: e2e-tests
 e2e-tests: annotated-policy.wasm
-	bats e2e.bats
+	@if [ -f e2e.bats ]; then \
+		bats e2e.bats; \
+	else \
+		echo "no e2e.bats file, skipping the end-to-end tests"; \
+	fi
 
 .PHONY: clean
 clean:
 	rm -f *.wasm *.tar.gz
-	
+
 .PHONY: debug
 debug:
 	@echo $(MAKEFILE_LIST)
@@ -42,3 +54,4 @@ debug:
 	@echo "CURDIR=$(CURDIR)"
 	@echo "POLICY_DIR=$(POLICY_DIR)"
 	@echo "POLICY_TYPE=$(POLICY_TYPE)"
+	@echo "SOURCE_FILES=$(SOURCE_FILES)"
